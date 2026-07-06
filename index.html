@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dailyAi - Command Center</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    
+    <!-- Animated Background -->
+    <div class="bg-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Login Modal -->
+    <div id="login-modal" class="modal-overlay">
+        <div class="modal-content glass-card">
+            <div class="modal-header">
+                <h2>Access Required</h2>
+                <p>Enter your GitHub Personal Access Token to connect to the private repository.</p>
+            </div>
+            <div class="modal-body">
+                <input type="password" id="github-pat" placeholder="ghp_XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" class="glass-input">
+                <button id="login-btn" class="glow-btn">Connect</button>
+            </div>
+            <div class="modal-footer" id="login-error" style="color: #ef4444; margin-top: 10px; display: none;">
+                Invalid Token.
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div class="dashboard-container" id="main-dashboard" style="display: none;">
+        <header class="glass-header">
+            <div class="header-left">
+                <h1><span class="gradient-text">dailyAi</span> Command Center</h1>
+                <p class="subtitle">Serverless Automation Engine</p>
+            </div>
+            <div class="header-right">
+                <button id="logout-btn" class="glass-btn-small">Disconnect</button>
+                <button id="refresh-btn" class="glass-btn">
+                    <svg class="icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-9.21l5.67-2.36"/>
+                    </svg>
+                    Refresh Status
+                </button>
+            </div>
+        </header>
+
+        <main>
+            <div id="workflows-grid" class="grid-layout">
+                <!-- Cards will be injected here via JS -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>

@@ -72,8 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Simple CSV parser
             const rows = csvText.split('\n').map(row => {
-                const matches = row.match(/(\s*'[^']+'|\s*[^,]+)(?=,|$)/g);
-                return matches ? matches.map(val => val.trim().replace(/^'|'$/g, '')) : [];
+                // Better CSV parser that handles empty fields properly (,,)
+                const matches = row.match(/(".*?"|[^",\s]+|)(?=\s*,|\s*$)/g);
+                return matches ? matches.map(val => val.trim().replace(/^"|"$/g, '')) : [];
             });
             
             const headers = rows[0];
@@ -121,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="meta-row">
                         <span class="meta-label">Last Run (IST)</span>
-                        <span class="meta-value" style="font-size: 0.85rem">${wf.LastRunTimeIST || wf.LastRunTime || 'Never'}</span>
+                        <span class="meta-value" style="font-size: 0.85rem">${(wf.LastRunTimeIST || wf.LastRunTime || 'Never').replace(' IST', '').replace(' UTC', '')}</span>
                     </div>
                 </div>
                 
@@ -156,19 +157,76 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             if (res.ok) {
-                showToast('Action triggered successfully! It will run in the background.', 'success');
+                showToast('Action triggered! Running in background...', 'success');
+                pollForCompletion(btnElement, originalText, workflowName);
             } else {
                 const err = await res.json();
                 showToast(`Failed to trigger: ${err.message}`, 'error');
+                btnElement.innerText = originalText;
+                btnElement.disabled = false;
             }
         } catch (e) {
             showToast(`Error: ${e.message}`, 'error');
-        }
-
-        setTimeout(() => {
             btnElement.innerText = originalText;
             btnElement.disabled = false;
-        }, 3000);
+        }
+    }
+
+    async function pollForCompletion(btnElement, originalText, workflowName) {
+        // Record the current LastRunTime to compare against
+        let initialRunTime = null;
+        try {
+            const res = await fetch(SHEET_CSV_URL);
+            const csvText = await res.text();
+            initialRunTime = extractRunTimeForWorkflow(csvText, workflowName);
+        } catch (e) {}
+
+        let attempts = 0;
+        const maxAttempts = 24; // 2 minutes (every 5s)
+        
+        const interval = setInterval(async () => {
+            attempts++;
+            try {
+                const res = await fetch(SHEET_CSV_URL);
+                const csvText = await res.text();
+                const currentRunTime = extractRunTimeForWorkflow(csvText, workflowName);
+                
+                if (currentRunTime && initialRunTime && currentRunTime !== initialRunTime) {
+                    // It changed! The workflow finished.
+                    clearInterval(interval);
+                    showToast(`${workflowName} finished!`, 'success');
+                    btnElement.innerText = originalText;
+                    btnElement.disabled = false;
+                    fetchDashboardData(); // Refresh UI
+                    return;
+                }
+            } catch (e) {}
+
+            if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                showToast(`${workflowName} timed out or is taking a while.`, 'info');
+                btnElement.innerText = originalText;
+                btnElement.disabled = false;
+                fetchDashboardData();
+            }
+        }, 5000);
+    }
+
+    function extractRunTimeForWorkflow(csvText, workflowName) {
+        const rows = csvText.split('\n').map(row => {
+            const matches = row.match(/(".*?"|[^",\s]+|)(?=\s*,|\s*$)/g);
+            return matches ? matches.map(val => val.trim().replace(/^"|"$/g, '')) : [];
+        });
+        const headers = rows[0];
+        const wfIndex = headers.indexOf('Workflow');
+        const rtIndex = headers.indexOf('LastRunTime');
+        
+        for (let i = 1; i < rows.length; i++) {
+            if (rows[i][wfIndex] === workflowName) {
+                return rows[i][rtIndex];
+            }
+        }
+        return null;
     }
 
     function showToast(message, type) {

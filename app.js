@@ -72,8 +72,9 @@ document.addEventListener('DOMContentLoaded', () => {
             
             // Simple CSV parser
             const rows = csvText.split('\n').map(row => {
-                const matches = row.match(/(\s*'[^']+'|\s*[^,]+)(?=,|$)/g);
-                return matches ? matches.map(val => val.trim().replace(/^'|'$/g, '')) : [];
+                // Better CSV parser that handles empty fields properly (,,)
+                const matches = row.match(/(".*?"|[^",\s]+|)(?=\s*,|\s*$)/g);
+                return matches ? matches.map(val => val.trim().replace(/^"|"$/g, '')) : [];
             });
             
             const headers = rows[0];
@@ -129,14 +130,14 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             
             card.querySelector('.trigger-btn').addEventListener('click', (e) => {
-                triggerGitHubAction(e.target);
+                triggerGitHubAction(e.target, wf.Workflow);
             });
             
             grid.appendChild(card);
         });
     }
 
-    async function triggerGitHubAction(btnElement) {
+    async function triggerGitHubAction(btnElement, workflowName) {
         const originalText = btnElement.innerText;
         btnElement.innerText = 'Triggering...';
         btnElement.disabled = true;
@@ -149,7 +150,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Accept': 'application/vnd.github.v3+json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ ref: 'main' })
+                body: JSON.stringify({ 
+                    ref: 'main',
+                    inputs: { target_workflow: workflowName }
+                })
             });
 
             if (res.ok) {

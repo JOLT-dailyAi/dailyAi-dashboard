@@ -70,11 +70,11 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error('Failed to fetch Google Sheet CSV. Check share permissions.');
             const csvText = await res.text();
             
-            // Simple CSV parser
+            // Robust CSV parser
             const rows = csvText.split('\n').map(row => {
-                // Better CSV parser that handles empty fields properly (,,)
-                const matches = row.match(/(".*?"|[^",\s]+|)(?=\s*,|\s*$)/g);
-                return matches ? matches.map(val => val.trim().replace(/^"|"$/g, '')) : [];
+                // Split by comma, but ignore commas inside quotes
+                const matches = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+                return matches.map(val => val.trim().replace(/^"|"$/g, ''));
             });
             
             const headers = rows[0];
@@ -214,8 +214,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function extractRunTimeForWorkflow(csvText, workflowName) {
         const rows = csvText.split('\n').map(row => {
-            const matches = row.match(/(".*?"|[^",\s]+|)(?=\s*,|\s*$)/g);
-            return matches ? matches.map(val => val.trim().replace(/^"|"$/g, '')) : [];
+            const matches = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
+            return matches.map(val => val.trim().replace(/^"|"$/g, ''));
         });
         const headers = rows[0];
         const wfIndex = headers.indexOf('Workflow');

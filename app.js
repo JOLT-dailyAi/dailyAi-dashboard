@@ -121,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="meta-value">${wf.VideosAppended || '0'}</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-label">Last Run (IST)</span>
+                        <span class="meta-label">Last Run</span>
                         <span class="meta-value" style="font-size: 0.85rem">${wf.LastRunTimeIST || wf.LastRunTime || 'Never'}</span>
                     </div>
                 </div>

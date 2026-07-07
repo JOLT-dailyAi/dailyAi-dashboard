@@ -129,14 +129,14 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             
             card.querySelector('.trigger-btn').addEventListener('click', (e) => {
-                triggerGitHubAction(e.target);
+                triggerGitHubAction(e.target, wf.Workflow);
             });
             
             grid.appendChild(card);
         });
     }
 
-    async function triggerGitHubAction(btnElement) {
+    async function triggerGitHubAction(btnElement, workflowName) {
         const originalText = btnElement.innerText;
         btnElement.innerText = 'Triggering...';
         btnElement.disabled = true;
@@ -149,7 +149,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     'Accept': 'application/vnd.github.v3+json',
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ ref: 'main' })
+                body: JSON.stringify({ 
+                    ref: 'main',
+                    inputs: { target_workflow: workflowName }
+                })
             });
 
             if (res.ok) {

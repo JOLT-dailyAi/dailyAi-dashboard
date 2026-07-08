@@ -135,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             card.innerHTML = `
                 <div class="card-header">
-                    <h2 class="card-title">${wf.Workflow === 'Desimemes' ? 'Memes' : (wf.Workflow || 'Unknown')}</h2>
+                    <h2 class="card-title">${(wf.Workflow || '').toLowerCase() === 'desimemes' ? 'Memes' : (wf.Workflow || 'Unknown')}</h2>
                     <span class="status-badge" style="color: ${statusColor}; border: 1px solid ${statusColor}">
                         ${wf.Status || 'Pending'}
                     </span>

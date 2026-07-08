@@ -20,6 +20,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorMsg = document.getElementById('login-error');
     const grid = document.getElementById('workflows-grid');
     const triggerAllBtn = document.getElementById('trigger-all-btn');
+    const gridToggleBtn = document.getElementById('grid-toggle-btn');
+    
+    if (gridToggleBtn) {
+        gridToggleBtn.addEventListener('click', () => {
+            const isCurrentlyOpen = gridToggleBtn.classList.contains('open');
+            
+            // Toggle grid state
+            gridToggleBtn.classList.toggle('open');
+            grid.classList.toggle('collapsed');
+            
+            // If we are collapsing the grid, collapse all child log panels
+            if (isCurrentlyOpen) {
+                const openPanels = document.querySelectorAll('.log-panel-title.open');
+                openPanels.forEach(panel => {
+                    panel.classList.remove('open');
+                    const carousel = panel.nextElementSibling;
+                    if (carousel && carousel.classList.contains('carousel-container')) {
+                        carousel.classList.remove('open');
+                    }
+                });
+            }
+        });
+    }
     
     if (triggerAllBtn) {
         triggerAllBtn.addEventListener('click', (e) => {

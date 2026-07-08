@@ -293,8 +293,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let html = `
             <div class="log-panel">
-                <div class="log-panel-title">Execution Logs</div>
-                <div class="carousel-container" id="carousel-${workflowName}">
+                <button class="log-panel-title collapsible-toggle" style="width: 100%; justify-content: space-between; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; padding: 0.5rem 1rem;" onclick="this.classList.toggle('open'); document.getElementById('carousel-${workflowName}').classList.toggle('open')">
+                    Execution Logs <span class="chevron" style="display: inline-block; transition: transform 0.25s;">▶</span>
+                </button>
+                <div class="carousel-container" id="carousel-${workflowName}" style="display: none; margin-top: 10px;">
                     <div class="carousel-track" id="track-${workflowName}">
         `;
 
@@ -321,17 +323,21 @@ document.addEventListener('DOMContentLoaded', () => {
         if (run.status.includes('Success')) statusClass = 'run-success';
         else if (run.status.includes('Failed')) statusClass = 'run-error';
         
-        const headerFooter = `
-            <div class="run-header">
-                <span class="run-ts">${run.timestamp} | ${run.status}</span>
-                <span class="run-counter">${currentIdx} / ${totalIdx}</span>
+        const navHtml = `
+            <div class="run-footer-nav" style="border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 10px; margin-bottom: 10px;">
+                <button class="nav-prev glass-btn-small">◀</button>
+                <div class="run-header" style="margin-bottom: 0; flex: 1; display: flex; justify-content: space-between; padding: 0 15px;">
+                    <span class="run-ts" style="font-size: 0.85rem;">${run.timestamp} | ${run.status}</span>
+                    <span class="run-counter" style="font-size: 0.85rem; font-weight: 600;">${currentIdx} / ${totalIdx}</span>
+                </div>
+                <button class="nav-next glass-btn-small">▶</button>
             </div>
         `;
 
         let html = `
             <div class="carousel-slide">
                 <div class="run-block ${statusClass}">
-                    ${headerFooter}
+                    ${navHtml}
                     
                     <div class="run-summary">
                         <div class="run-stat summary-stat">Images: <span>${run.images_appended}</span></div>
@@ -345,23 +351,26 @@ document.addEventListener('DOMContentLoaded', () => {
             run.funnel.forEach((step, idx) => {
                 html += `
                     <div class="run-step">
-                        <div class="step-stats">
-                            Input (${step.input}) → <b>[${step.function_name}]</b> → Result (${step.passed} pass, <span class="${step.failed > 0 ? 'error-text' : ''}">${step.failed} fail</span>)
+                        <div class="step-stats" style="font-size: 0.85rem; padding: 2px 0;">
+                            <b>${step.function_name}</b>: ${step.input} in → ${step.passed} pass, <span class="${step.failed > 0 ? 'error-text' : ''}">${step.failed} fail</span>
                         </div>
                         ${step.failed_urls && step.failed_urls.length > 0 ? generateDroppedUrlsHtml("Failed URLs", step.failed_urls) : ''}
                     </div>
                 `;
             });
         } else {
-            html += `<div class="run-step"><div class="step-stats">No pipeline steps executed.</div></div>`;
+            html += `<div class="run-step"><div class="step-stats" style="font-size: 0.85rem;">No pipeline steps executed.</div></div>`;
         }
 
         html += `
                     </div>
                     
-                    <div class="run-footer-nav" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                    <div class="run-footer-nav" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px; border-bottom: none; margin-bottom: 0;">
                         <button class="nav-prev glass-btn-small">◀</button>
-                        ${headerFooter}
+                        <div class="run-header" style="margin-bottom: 0; flex: 1; display: flex; justify-content: space-between; padding: 0 15px;">
+                            <span class="run-ts" style="font-size: 0.85rem;">${run.timestamp} | ${run.status}</span>
+                            <span class="run-counter" style="font-size: 0.85rem; font-weight: 600;">${currentIdx} / ${totalIdx}</span>
+                        </div>
                         <button class="nav-next glass-btn-small">▶</button>
                     </div>
                 </div>

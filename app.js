@@ -385,7 +385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         let currentIndex = 0;
 
         const updateTransform = () => {
-            track.style.transform = \`translateX(-\${currentIndex * 100}%)\`;
+            track.style.transform = `translateX(-${currentIndex * 100}%)`;
         };
 
         const prevBtns = container.querySelectorAll('.nav-prev');

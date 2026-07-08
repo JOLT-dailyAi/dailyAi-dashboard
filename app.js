@@ -78,8 +78,28 @@ document.addEventListener('DOMContentLoaded', () => {
         await fetchDashboardData();
     }
 
+    let globalDashboardLogs = null;
+
+    async function fetchGlobalLogs() {
+        try {
+            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/logs/dashboard_logs.json`, {
+                headers: {
+                    'Authorization': `Bearer ${pat}`,
+                    'Accept': 'application/vnd.github.v3.raw'
+                }
+            });
+            if (res.ok) {
+                const text = await res.text();
+                globalDashboardLogs = JSON.parse(text);
+            }
+        } catch (e) {
+            console.error("Failed to fetch dashboard_logs.json", e);
+        }
+    }
+
     async function fetchDashboardData() {
         try {
+            await fetchGlobalLogs();
             const res = await fetch(SHEET_CSV_URL);
             if (!res.ok) throw new Error('Failed to fetch Google Sheet CSV. Check share permissions.');
             const csvText = await res.text();
@@ -149,8 +169,8 @@ document.addEventListener('DOMContentLoaded', () => {
             
             grid.appendChild(card);
             
-            // Asynchronously fetch and render logs for this card
-            fetchAndParseLogs(wf.Workflow, card);
+            // Render the JSON carousel logs directly
+            renderCarouselLogs(wf.Workflow, card);
         });
     }
 
@@ -256,241 +276,90 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 3000);
     }
 
-    // --- Log Parsing and Rendering ---
+    // --- Log Parsing and Rendering (JSON Carousel) ---
     
-    async function fetchAndParseLogs(workflowName, cardElement) {
-        const logFileName = WF_LOG_FILE_MAP[workflowName];
-        if (!logFileName) return;
+    function renderCarouselLogs(workflowName, cardElement) {
+        if (!globalDashboardLogs || !globalDashboardLogs[workflowName]) return;
         
-        try {
-            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/logs/${logFileName}`, {
-                headers: {
-                    'Authorization': `Bearer ${pat}`,
-                    'Accept': 'application/vnd.github.v3.raw'
-                }
-            });
-            
-            if (!res.ok) throw new Error("Failed to fetch logs");
-            const text = await res.text();
-            
-            // Split by "======== START:" but keep the boundary or at least properly group
-            const runs = text.split(/======== START: .*? ========\n/).filter(r => r.trim() !== '');
-            if (runs.length === 0) return;
-            
-            // Reverse to show latest first
-            runs.reverse();
-            renderLogPanel(runs, cardElement);
-        } catch(e) {
-            console.error("Log fetch failed:", e);
-        }
-    }
+        const runs = globalDashboardLogs[workflowName];
+        if (runs.length === 0) return;
 
-    function parseRunText(runText) {
-        const lines = runText.trim().split('\n');
-        
-        let runData = {
-            ts: '',
-            status: 'Unknown',
-            summary: { fetched: '0', finalImages: '0', finalVideos: '0' },
-            steps: {
-                filterNew: { input: '0', passed: '0' },
-                extract: { input: '0', passed: '0', failedMissing: '0', failedDup: '0', droppedUrls: [] },
-                validate: { input: '0', passed: '0', failedDead: '0', droppedUrls: [] },
-                upload: { input: '0', passed: '0', failedUnsupported: '0', droppedUrls: [] }
-            },
-            isLegacy: false
-        };
-        
-        if (lines.length > 0) {
-            const matchTs = lines[lines.length-1].match(/^([\d-]+ [\d:,]+)/);
-            if (matchTs) runData.ts = matchTs[1];
-        }
-
-        lines.forEach(line => {
-            if (line.includes('======== END: ')) {
-                if (line.includes('success')) runData.status = 'Success';
-                else if (line.includes('no new messages')) runData.status = 'No New Messages';
-                else runData.status = 'Failed';
-            }
-            
-            // --- Legacy Log Matching ---
-            if (line.includes('Discord → fetched')) {
-                const m = line.match(/fetched (\d+) messages/);
-                if (m) { runData.summary.fetched = m[1]; runData.isLegacy = true; }
-            }
-            if (line.includes('Filter New Messages →')) {
-                const m = line.match(/→ (\d+) new messages/);
-                if (m) { runData.steps.filterNew.passed = m[1]; runData.isLegacy = true; }
-            }
-            if (line.includes('Remove Duplicates →')) {
-                const m = line.match(/→ (\d+) IDs already in sheets/);
-                if (m) { runData.steps.extract.failedDup = m[1]; runData.isLegacy = true; }
-            }
-            if (line.includes('Appended') && line.includes('image rows') && !line.includes('google_sheets_api.py')) {
-                const m = line.match(/Appended (\d+) image rows/);
-                if (m) runData.summary.finalImages = m[1];
-            }
-            if (line.includes('Appended') && line.includes('video rows') && !line.includes('google_sheets_api.py')) {
-                const m = line.match(/Appended (\d+) video rows/);
-                if (m) runData.summary.finalVideos = m[1];
-            }
-            if (line.includes('HTTP Request') && line.includes('dead link')) {
-                const m = line.match(/dead link.*?:\s*(https?:\/\/[^\s]+)/);
-                if (m) runData.steps.validate.droppedUrls.push(m[1].trim());
-            }
-
-            // --- New Explicit Log Matching ---
-            if (line.includes('Node 2 [discord_api.py] | Fetched')) {
-                const m = line.match(/Fetched (\d+) messages/);
-                if (m) runData.summary.fetched = m[1];
-            }
-            if (line.includes('Node 4 [filter_new_messages.py] | Input:')) {
-                const m = line.match(/Input: (\d+), Passed: (\d+)/);
-                if (m) { runData.steps.filterNew.input = m[1]; runData.steps.filterNew.passed = m[2]; }
-            }
-            if (line.includes('Node 6-7 [extract_reddit_post_id.py] | Input:')) {
-                const m = line.match(/Input: (\d+), Passed: (\d+), Failed \(Missing Data\): (\d+), Failed \(Duplicate\): (\d+)/);
-                if (m) {
-                    runData.steps.extract.input = m[1];
-                    runData.steps.extract.passed = m[2];
-                    runData.steps.extract.failedMissing = m[3];
-                    runData.steps.extract.failedDup = m[4];
-                }
-            }
-            if (line.includes('Node 6-7 [extract_reddit_post_id.py] | Dropped')) {
-                const m = line.match(/Dropped \((.*?)\): (https?:\/\/[^\s]+)/);
-                if (m) runData.steps.extract.droppedUrls.push(`[${m[1]}] ${m[2].trim()}`);
-            }
-            if (line.includes('Node 8 [url_validator.py] | Input:')) {
-                const m = line.match(/Input: (\d+), Passed: (\d+), Failed \(Dead\): (\d+)/);
-                if (m) {
-                    runData.steps.validate.input = m[1];
-                    runData.steps.validate.passed = m[2];
-                    runData.steps.validate.failedDead = m[3];
-                }
-            }
-            if (line.includes('Node 8 [url_validator.py] | Dropped')) {
-                const m = line.match(/Dropped \(Dead Link\): (https?:\/\/[^\s]+)/);
-                if (m) runData.steps.validate.droppedUrls.push(m[1].trim());
-            }
-            if (line.includes('Node 9 [prepare_for_upload.py] | Input:')) {
-                const m = line.match(/Input: (\d+), Passed: (\d+), Failed \(Unsupported\): (\d+)/);
-                if (m) {
-                    runData.steps.upload.input = m[1];
-                    runData.steps.upload.passed = m[2];
-                    runData.steps.upload.failedUnsupported = m[3];
-                }
-            }
-            if (line.includes('Node 9 [prepare_for_upload.py] | Dropped')) {
-                const m = line.match(/Dropped \(Unsupported Type\): (https?:\/\/[^\s]+)/);
-                if (m) runData.steps.upload.droppedUrls.push(m[1].trim());
-            }
-            if (line.includes('Node 10 [google_sheets_api.py] | Appended')) {
-                const m = line.match(/Appended (\d+) image rows/);
-                if (m) runData.summary.finalImages = m[1];
-            }
-            if (line.includes('Node 11 [google_sheets_api.py] | Appended')) {
-                const m = line.match(/Appended (\d+) video rows/);
-                if (m) runData.summary.finalVideos = m[1];
-            }
-        });
-
-        return runData;
-    }
-
-    function renderLogPanel(runs, cardElement) {
-        const latestRun = runs[0] ? parseRunText(runs[0]) : null;
-        if (!latestRun) return;
-
-        const pastRuns = runs.slice(1).map(parseRunText);
-        
         let html = `
             <div class="log-panel">
                 <div class="log-panel-title">Execution Logs</div>
-                ${generateRunHtml(latestRun)}
+                <div class="carousel-container" id="carousel-${workflowName}">
+                    <div class="carousel-track" id="track-${workflowName}">
         `;
-        
-        if (pastRuns.length > 0) {
-            html += `
-                <button class="past-runs-toggle" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open')">
-                    See/Hide Past Log Runs <span class="chevron">▼</span>
-                </button>
-                <div class="past-runs-list">
-                    ${pastRuns.map(r => generateRunHtml(r)).join('')}
+
+        runs.forEach((run, index) => {
+            html += generateRunHtml(run, index + 1, runs.length);
+        });
+
+        html += `
+                    </div>
                 </div>
-            `;
-        }
-        
-        html += `</div>`;
+            </div>
+        `;
         
         const panel = document.createElement('div');
         panel.innerHTML = html;
         cardElement.appendChild(panel.firstElementChild);
+
+        // Attach event listeners for this carousel
+        setupCarousel(workflowName, runs.length);
     }
 
-    function generateRunHtml(run) {
+    function generateRunHtml(run, currentIdx, totalIdx) {
         let statusClass = 'run-info';
-        if (run.status === 'Success') statusClass = 'run-success';
-        if (run.status === 'Failed') statusClass = 'run-error';
+        if (run.status.includes('Success')) statusClass = 'run-success';
+        else if (run.status.includes('Failed')) statusClass = 'run-error';
         
-        let html = `
-            <div class="run-block ${statusClass}">
-                <div class="run-header">
-                    <span class="run-ts">${run.ts}</span>
-                    <span class="run-status-tag">${run.status}</span>
-                </div>
-                
-                <div class="run-summary">
-                    <div class="run-stat summary-stat">Fetched: <span>${run.summary.fetched}</span></div>
-                    <div class="run-stat summary-stat">Final Images: <span>${run.summary.finalImages}</span></div>
-                    <div class="run-stat summary-stat">Final Videos: <span>${run.summary.finalVideos}</span></div>
-                </div>
+        const headerFooter = `
+            <div class="run-header">
+                <span class="run-ts">${run.timestamp} | ${run.status}</span>
+                <span class="run-counter">${currentIdx} / ${totalIdx}</span>
+            </div>
         `;
 
-        if (run.isLegacy) {
-            html += `
-                <div class="run-steps-legacy">
-                    <i>(Legacy Log Format)</i>
-                    <div class="run-stat">New Msgs: <span>${run.steps.filterNew.passed}</span></div>
-                    <div class="run-stat">Duplicates: <span>${run.steps.extract.failedDup}</span></div>
-                </div>
-            `;
-            if (run.steps.validate.droppedUrls.length > 0) {
-                html += generateDroppedUrlsHtml("Failed/Dead Links", run.steps.validate.droppedUrls);
-            }
-        } else {
-            html += `
-                <div class="run-steps">
-                    <div class="run-step">
-                        <div class="step-title">1. Filter New Messages</div>
-                        <div class="step-stats">Input: <b>${run.steps.filterNew.input}</b> | Passed: <b>${run.steps.filterNew.passed}</b></div>
+        let html = `
+            <div class="carousel-slide">
+                <div class="run-block ${statusClass}">
+                    ${headerFooter}
+                    
+                    <div class="run-summary">
+                        <div class="run-stat summary-stat">Images: <span>${run.images_appended}</span></div>
+                        <div class="run-stat summary-stat">Videos: <span>${run.videos_appended}</span></div>
                     </div>
                     
-                    <div class="run-step">
-                        <div class="step-title">2. Extract & Pre-Filter</div>
-                        <div class="step-stats">Input: <b>${run.steps.extract.input}</b> | Passed: <b>${run.steps.extract.passed}</b></div>
-                        <div class="step-stats error-text">Failed Missing Data: <b>${run.steps.extract.failedMissing}</b> | Duplicate: <b>${run.steps.extract.failedDup}</b></div>
-                        ${run.steps.extract.droppedUrls.length > 0 ? generateDroppedUrlsHtml("Dropped URLs", run.steps.extract.droppedUrls) : ''}
-                    </div>
+                    <div class="run-steps">
+        `;
 
+        if (run.funnel && run.funnel.length > 0) {
+            run.funnel.forEach((step, idx) => {
+                html += `
                     <div class="run-step">
-                        <div class="step-title">3. URL Validation</div>
-                        <div class="step-stats">Input: <b>${run.steps.validate.input}</b> | Passed: <b>${run.steps.validate.passed}</b></div>
-                        <div class="step-stats error-text">Failed (Dead): <b>${run.steps.validate.failedDead}</b></div>
-                        ${run.steps.validate.droppedUrls.length > 0 ? generateDroppedUrlsHtml("Dead Links", run.steps.validate.droppedUrls) : ''}
+                        <div class="step-stats">
+                            Input (${step.input}) → <b>[${step.function_name}]</b> → Result (${step.passed} pass, <span class="${step.failed > 0 ? 'error-text' : ''}">${step.failed} fail</span>)
+                        </div>
+                        ${step.failed_urls && step.failed_urls.length > 0 ? generateDroppedUrlsHtml("Failed URLs", step.failed_urls) : ''}
                     </div>
-
-                    <div class="run-step">
-                        <div class="step-title">4. Prepare For Upload</div>
-                        <div class="step-stats">Input: <b>${run.steps.upload.input}</b> | Passed: <b>${run.steps.upload.passed}</b></div>
-                        <div class="step-stats error-text">Failed (Unsupported): <b>${run.steps.upload.failedUnsupported}</b></div>
-                        ${run.steps.upload.droppedUrls.length > 0 ? generateDroppedUrlsHtml("Unsupported URLs", run.steps.upload.droppedUrls) : ''}
-                    </div>
-                </div>
-            `;
+                `;
+            });
+        } else {
+            html += `<div class="run-step"><div class="step-stats">No pipeline steps executed.</div></div>`;
         }
 
-        html += `</div>`;
+        html += `
+                    </div>
+                    
+                    <div class="run-footer-nav" style="margin-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 10px;">
+                        <button class="nav-prev glass-btn-small">◀</button>
+                        ${headerFooter}
+                        <button class="nav-next glass-btn-small">▶</button>
+                    </div>
+                </div>
+            </div>
+        `;
         return html;
     }
 
@@ -506,5 +375,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 }).join('')}
             </div>
         `;
+    }
+
+    function setupCarousel(workflowName, totalSlides) {
+        const track = document.getElementById(`track-${workflowName}`);
+        const container = document.getElementById(`carousel-${workflowName}`);
+        if (!track || !container) return;
+
+        let currentIndex = 0;
+
+        const updateTransform = () => {
+            track.style.transform = \`translateX(-\${currentIndex * 100}%)\`;
+        };
+
+        const prevBtns = container.querySelectorAll('.nav-prev');
+        const nextBtns = container.querySelectorAll('.nav-next');
+
+        prevBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (currentIndex > 0) {
+                    currentIndex--;
+                    updateTransform();
+                }
+            });
+        });
+
+        nextBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                if (currentIndex < totalSlides - 1) {
+                    currentIndex++;
+                    updateTransform();
+                }
+            });
+        });
     }
 });

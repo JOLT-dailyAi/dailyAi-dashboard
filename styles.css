@@ -182,8 +182,14 @@ body {
 /* Grid Layout */
 .grid-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    grid-template-columns: repeat(2, 1fr);
     gap: 2rem;
+}
+
+@media (max-width: 900px) {
+    .grid-layout {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Cards */
@@ -426,8 +432,9 @@ body {
 .run-step {
     background: rgba(0,0,0,0.2);
     border-left: 2px solid rgba(255,255,255,0.1);
-    padding: 0.5rem 0.8rem;
+    padding: 0.6rem 0.8rem;
     border-radius: 4px 8px 8px 4px;
+    margin-bottom: 0.3rem;
 }
 .step-title {
     font-size: 0.78rem;
@@ -539,4 +546,38 @@ body {
     color: var(--text-secondary);
     font-style: italic;
     padding: 0.5rem 0;
+}
+
+/* ── Carousel UI ───────────────────────────────────────────────────────── */
+.carousel-container {
+    width: 100%;
+    overflow: hidden;
+    position: relative;
+    border-radius: 12px;
+}
+
+.carousel-track {
+    display: flex;
+    transition: transform 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+    width: 100%;
+}
+
+.carousel-slide {
+    min-width: 100%;
+    flex: 0 0 100%;
+    /* No padding, let .run-block handle it */
+}
+
+.run-footer-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.run-footer-nav .run-header {
+    margin-bottom: 0;
+    flex: 1;
+    display: flex;
+    justify-content: space-between;
+    padding: 0 15px;
 }

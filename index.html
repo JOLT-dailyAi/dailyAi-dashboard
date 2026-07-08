@@ -55,7 +55,12 @@
             <div id="workflows-container">
                 <div class="workflows-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                     <h2 style="color: white; margin: 0; font-size: 1.5rem; font-weight: 600;">Aggregators</h2>
-                    <button id="trigger-all-btn" class="glow-btn" style="width: auto; padding: 0.6rem 2rem;">Run All Workflows</button>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <button id="grid-toggle-btn" class="glass-btn-small open" onclick="this.classList.toggle('open'); document.getElementById('workflows-grid').classList.toggle('collapsed')">
+                            <span class="chevron" style="display: inline-block; transition: transform 0.25s;">▶</span>
+                        </button>
+                        <button id="trigger-all-btn" class="glow-btn" style="width: auto; padding: 0.6rem 2rem;">Run All Workflows</button>
+                    </div>
                 </div>
                 <div id="workflows-grid" class="grid-layout">
                     <!-- Cards will be injected here via JS -->

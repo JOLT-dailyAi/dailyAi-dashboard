@@ -192,6 +192,26 @@ body {
     }
 }
 
+#workflows-grid {
+    transition: opacity 0.3s ease;
+}
+#workflows-grid.collapsed {
+    display: none;
+}
+
+#grid-toggle-btn {
+    padding: 0.6rem 0.8rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+#grid-toggle-btn .chevron {
+    transition: transform 0.25s;
+}
+#grid-toggle-btn.open .chevron {
+    transform: rotate(90deg);
+}
+
 /* Cards */
 .glass-card {
     background: var(--card-bg);

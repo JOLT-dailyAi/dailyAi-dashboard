@@ -502,7 +502,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="dead-links-list">
                 ${urls.map(link => {
                     const cleanLink = link.replace(/^\[.*?\]\s*/, '');
-                    return \`<div class="dead-link-item"><a href="\${cleanLink}" target="_blank">\${link}</a></div>\`;
+                    return `<div class="dead-link-item"><a href="${cleanLink}" target="_blank">${link}</a></div>`;
                 }).join('')}
             </div>
         `;

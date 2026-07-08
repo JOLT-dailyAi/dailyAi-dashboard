@@ -177,7 +177,10 @@ document.addEventListener('DOMContentLoaded', () => {
     async function triggerGitHubAction(btnElement, workflowName) {
         const originalText = btnElement.innerText;
         btnElement.innerText = 'Triggering...';
-        btnElement.disabled = true;
+        
+        // Disable ALL action buttons to prevent parallel runs
+        const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn');
+        allTriggers.forEach(btn => btn.disabled = true);
 
         try {
             const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`, {
@@ -200,12 +203,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const err = await res.json();
                 showToast(`Failed to trigger: ${err.message}`, 'error');
                 btnElement.innerText = originalText;
-                btnElement.disabled = false;
+                allTriggers.forEach(btn => btn.disabled = false);
             }
         } catch (e) {
             showToast(`Error: ${e.message}`, 'error');
             btnElement.innerText = originalText;
-            btnElement.disabled = false;
+            allTriggers.forEach(btn => btn.disabled = false);
         }
     }
 
@@ -217,6 +220,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const csvText = await res.text();
             initialRunTime = extractRunTimeForWorkflow(csvText, workflowName);
         } catch (e) {}
+
+        const enableAllButtons = () => {
+            btnElement.innerText = originalText;
+            const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn');
+            allTriggers.forEach(btn => btn.disabled = false);
+        };
 
         let attempts = 0;
         const maxAttempts = 24; // 2 minutes (every 5s)
@@ -232,8 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     // It changed! The workflow finished.
                     clearInterval(interval);
                     showToast(`${workflowName} finished!`, 'success');
-                    btnElement.innerText = originalText;
-                    btnElement.disabled = false;
+                    enableAllButtons();
                     fetchDashboardData(); // Refresh UI
                     return;
                 }
@@ -242,8 +250,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (attempts >= maxAttempts) {
                 clearInterval(interval);
                 showToast(`${workflowName} timed out or is taking a while.`, 'info');
-                btnElement.innerText = originalText;
-                btnElement.disabled = false;
+                enableAllButtons();
                 fetchDashboardData();
             }
         }, 5000);

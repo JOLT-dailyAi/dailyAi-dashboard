@@ -12,6 +12,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const refreshBtn = document.getElementById('refresh-btn');
     const errorMsg = document.getElementById('login-error');
     const grid = document.getElementById('workflows-grid');
+    const triggerAllBtn = document.getElementById('trigger-all-btn');
+    
+    if (triggerAllBtn) {
+        triggerAllBtn.addEventListener('click', (e) => {
+            triggerGitHubAction(e.target, 'all');
+        });
+    }
     
     // Check Auth
     let pat = localStorage.getItem('github_pat');

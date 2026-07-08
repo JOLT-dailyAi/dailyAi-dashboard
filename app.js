@@ -287,55 +287,121 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function parseRunText(runText) {
         const lines = runText.trim().split('\n');
-        let fetched = '0', newMsgs = '0', duplicates = '0';
-        let images = '0', videos = '0';
-        let deadLinks = [];
-        let status = 'Unknown';
-        let ts = '';
+        
+        let runData = {
+            ts: '',
+            status: 'Unknown',
+            summary: { fetched: '0', finalImages: '0', finalVideos: '0' },
+            steps: {
+                filterNew: { input: '0', passed: '0' },
+                extract: { input: '0', passed: '0', failedMissing: '0', failedDup: '0', droppedUrls: [] },
+                validate: { input: '0', passed: '0', failedDead: '0', droppedUrls: [] },
+                upload: { input: '0', passed: '0', failedUnsupported: '0', droppedUrls: [] }
+            },
+            isLegacy: false
+        };
         
         if (lines.length > 0) {
-            // Get timestamp from the last line (the END line usually)
             const matchTs = lines[lines.length-1].match(/^([\d-]+ [\d:,]+)/);
-            if (matchTs) ts = matchTs[1];
+            if (matchTs) runData.ts = matchTs[1];
         }
 
         lines.forEach(line => {
+            if (line.includes('======== END: ')) {
+                if (line.includes('success')) runData.status = 'Success';
+                else if (line.includes('no new messages')) runData.status = 'No New Messages';
+                else runData.status = 'Failed';
+            }
+            
+            // --- Legacy Log Matching ---
             if (line.includes('Discord → fetched')) {
                 const m = line.match(/fetched (\d+) messages/);
-                if (m) fetched = m[1];
+                if (m) { runData.summary.fetched = m[1]; runData.isLegacy = true; }
             }
             if (line.includes('Filter New Messages →')) {
                 const m = line.match(/→ (\d+) new messages/);
-                if (m) newMsgs = m[1];
+                if (m) { runData.steps.filterNew.passed = m[1]; runData.isLegacy = true; }
             }
             if (line.includes('Remove Duplicates →')) {
                 const m = line.match(/→ (\d+) IDs already in sheets/);
-                if (m) duplicates = m[1];
+                if (m) { runData.steps.extract.failedDup = m[1]; runData.isLegacy = true; }
             }
-            if (line.includes('Appended') && line.includes('image rows')) {
+            if (line.includes('Appended') && line.includes('image rows') && !line.includes('google_sheets_api.py')) {
                 const m = line.match(/Appended (\d+) image rows/);
-                if (m) images = m[1];
+                if (m) runData.summary.finalImages = m[1];
             }
-            if (line.includes('Appended') && line.includes('video rows')) {
+            if (line.includes('Appended') && line.includes('video rows') && !line.includes('google_sheets_api.py')) {
                 const m = line.match(/Appended (\d+) video rows/);
-                if (m) videos = m[1];
+                if (m) runData.summary.finalVideos = m[1];
             }
             if (line.includes('HTTP Request') && line.includes('dead link')) {
                 const m = line.match(/dead link.*?:\s*(https?:\/\/[^\s]+)/);
-                if (m) deadLinks.push(m[1].trim());
+                if (m) runData.steps.validate.droppedUrls.push(m[1].trim());
             }
-            if (line.includes('======== END: ')) {
-                if (line.includes('success')) status = 'Success';
-                else if (line.includes('no new messages')) status = 'No New Messages';
-                else status = 'Failed';
+
+            // --- New Explicit Log Matching ---
+            if (line.includes('Node 2 [discord_api.py] | Fetched')) {
+                const m = line.match(/Fetched (\d+) messages/);
+                if (m) runData.summary.fetched = m[1];
+            }
+            if (line.includes('Node 4 [filter_new_messages.py] | Input:')) {
+                const m = line.match(/Input: (\d+), Passed: (\d+)/);
+                if (m) { runData.steps.filterNew.input = m[1]; runData.steps.filterNew.passed = m[2]; }
+            }
+            if (line.includes('Node 6-7 [extract_reddit_post_id.py] | Input:')) {
+                const m = line.match(/Input: (\d+), Passed: (\d+), Failed \(Missing Data\): (\d+), Failed \(Duplicate\): (\d+)/);
+                if (m) {
+                    runData.steps.extract.input = m[1];
+                    runData.steps.extract.passed = m[2];
+                    runData.steps.extract.failedMissing = m[3];
+                    runData.steps.extract.failedDup = m[4];
+                }
+            }
+            if (line.includes('Node 6-7 [extract_reddit_post_id.py] | Dropped')) {
+                const m = line.match(/Dropped \((.*?)\): (https?:\/\/[^\s]+)/);
+                if (m) runData.steps.extract.droppedUrls.push(`[${m[1]}] ${m[2].trim()}`);
+            }
+            if (line.includes('Node 8 [url_validator.py] | Input:')) {
+                const m = line.match(/Input: (\d+), Passed: (\d+), Failed \(Dead\): (\d+)/);
+                if (m) {
+                    runData.steps.validate.input = m[1];
+                    runData.steps.validate.passed = m[2];
+                    runData.steps.validate.failedDead = m[3];
+                }
+            }
+            if (line.includes('Node 8 [url_validator.py] | Dropped')) {
+                const m = line.match(/Dropped \(Dead Link\): (https?:\/\/[^\s]+)/);
+                if (m) runData.steps.validate.droppedUrls.push(m[1].trim());
+            }
+            if (line.includes('Node 9 [prepare_for_upload.py] | Input:')) {
+                const m = line.match(/Input: (\d+), Passed: (\d+), Failed \(Unsupported\): (\d+)/);
+                if (m) {
+                    runData.steps.upload.input = m[1];
+                    runData.steps.upload.passed = m[2];
+                    runData.steps.upload.failedUnsupported = m[3];
+                }
+            }
+            if (line.includes('Node 9 [prepare_for_upload.py] | Dropped')) {
+                const m = line.match(/Dropped \(Unsupported Type\): (https?:\/\/[^\s]+)/);
+                if (m) runData.steps.upload.droppedUrls.push(m[1].trim());
+            }
+            if (line.includes('Node 10 [google_sheets_api.py] | Appended')) {
+                const m = line.match(/Appended (\d+) image rows/);
+                if (m) runData.summary.finalImages = m[1];
+            }
+            if (line.includes('Node 11 [google_sheets_api.py] | Appended')) {
+                const m = line.match(/Appended (\d+) video rows/);
+                if (m) runData.summary.finalVideos = m[1];
             }
         });
 
-        return { fetched, newMsgs, duplicates, images, videos, deadLinks, status, ts };
+        return runData;
     }
 
     function renderLogPanel(runs, cardElement) {
-        const latestRun = parseRunText(runs[0]);
+        const latestRun = runs[0] ? parseRunText(runs[0]) : null;
+        if (!latestRun) return;
+
         const pastRuns = runs.slice(1).map(parseRunText);
         
         let html = `
@@ -373,27 +439,72 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span class="run-ts">${run.ts}</span>
                     <span class="run-status-tag">${run.status}</span>
                 </div>
-                <div class="run-stats">
-                    <div class="run-stat">Fetched: <span>${run.fetched}</span></div>
-                    <div class="run-stat">New Msgs: <span>${run.newMsgs}</span></div>
-                    <div class="run-stat">Duplicates: <span>${run.duplicates}</span></div>
-                    <div class="run-stat">Images: <span>${run.images}</span></div>
-                    <div class="run-stat">Videos: <span>${run.videos}</span></div>
+                
+                <div class="run-summary">
+                    <div class="run-stat summary-stat">Fetched: <span>${run.summary.fetched}</span></div>
+                    <div class="run-stat summary-stat">Final Images: <span>${run.summary.finalImages}</span></div>
+                    <div class="run-stat summary-stat">Final Videos: <span>${run.summary.finalVideos}</span></div>
                 </div>
         `;
-        
-        if (run.deadLinks.length > 0) {
+
+        if (run.isLegacy) {
             html += `
-                <button class="collapsible-toggle" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open')">
-                    Failed/Dead Links (${run.deadLinks.length}) <span class="chevron">▶</span>
-                </button>
-                <div class="dead-links-list">
-                    ${run.deadLinks.map(link => `<div class="dead-link-item"><a href="${link}" target="_blank">${link}</a></div>`).join('')}
+                <div class="run-steps-legacy">
+                    <i>(Legacy Log Format)</i>
+                    <div class="run-stat">New Msgs: <span>${run.steps.filterNew.passed}</span></div>
+                    <div class="run-stat">Duplicates: <span>${run.steps.extract.failedDup}</span></div>
+                </div>
+            `;
+            if (run.steps.validate.droppedUrls.length > 0) {
+                html += generateDroppedUrlsHtml("Failed/Dead Links", run.steps.validate.droppedUrls);
+            }
+        } else {
+            html += `
+                <div class="run-steps">
+                    <div class="run-step">
+                        <div class="step-title">1. Filter New Messages</div>
+                        <div class="step-stats">Input: <b>${run.steps.filterNew.input}</b> | Passed: <b>${run.steps.filterNew.passed}</b></div>
+                    </div>
+                    
+                    <div class="run-step">
+                        <div class="step-title">2. Extract & Pre-Filter</div>
+                        <div class="step-stats">Input: <b>${run.steps.extract.input}</b> | Passed: <b>${run.steps.extract.passed}</b></div>
+                        <div class="step-stats error-text">Failed Missing Data: <b>${run.steps.extract.failedMissing}</b> | Duplicate: <b>${run.steps.extract.failedDup}</b></div>
+                        ${run.steps.extract.droppedUrls.length > 0 ? generateDroppedUrlsHtml("Dropped URLs", run.steps.extract.droppedUrls) : ''}
+                    </div>
+
+                    <div class="run-step">
+                        <div class="step-title">3. URL Validation</div>
+                        <div class="step-stats">Input: <b>${run.steps.validate.input}</b> | Passed: <b>${run.steps.validate.passed}</b></div>
+                        <div class="step-stats error-text">Failed (Dead): <b>${run.steps.validate.failedDead}</b></div>
+                        ${run.steps.validate.droppedUrls.length > 0 ? generateDroppedUrlsHtml("Dead Links", run.steps.validate.droppedUrls) : ''}
+                    </div>
+
+                    <div class="run-step">
+                        <div class="step-title">4. Prepare For Upload</div>
+                        <div class="step-stats">Input: <b>${run.steps.upload.input}</b> | Passed: <b>${run.steps.upload.passed}</b></div>
+                        <div class="step-stats error-text">Failed (Unsupported): <b>${run.steps.upload.failedUnsupported}</b></div>
+                        ${run.steps.upload.droppedUrls.length > 0 ? generateDroppedUrlsHtml("Unsupported URLs", run.steps.upload.droppedUrls) : ''}
+                    </div>
                 </div>
             `;
         }
-        
+
         html += `</div>`;
         return html;
+    }
+
+    function generateDroppedUrlsHtml(label, urls) {
+        return `
+            <button class="collapsible-toggle" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open')">
+                ${label} (${urls.length}) <span class="chevron">▶</span>
+            </button>
+            <div class="dead-links-list">
+                ${urls.map(link => {
+                    const cleanLink = link.replace(/^\[.*?\]\s*/, '');
+                    return \`<div class="dead-link-item"><a href="\${cleanLink}" target="_blank">\${link}</a></div>\`;
+                }).join('')}
+            </div>
+        `;
     }
 });

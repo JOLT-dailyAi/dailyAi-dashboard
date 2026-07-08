@@ -399,6 +399,56 @@ body {
     font-weight: 600;
 }
 
+/* Run Summary Row */
+.run-summary {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    padding: 0.5rem 0.8rem;
+    border-radius: 8px;
+    margin-bottom: 0.8rem;
+}
+.summary-stat { font-size: 0.85rem; color: var(--text-secondary); }
+.summary-stat span { font-size: 0.95rem; }
+
+/* Run Steps Breakdown */
+.run-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.run-steps-legacy {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 0.5rem;
+}
+.run-step {
+    background: rgba(0,0,0,0.2);
+    border-left: 2px solid rgba(255,255,255,0.1);
+    padding: 0.5rem 0.8rem;
+    border-radius: 4px 8px 8px 4px;
+}
+.step-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin-bottom: 0.3rem;
+}
+.step-stats {
+    font-size: 0.75rem;
+    color: var(--text-primary);
+    opacity: 0.9;
+}
+.step-stats b {
+    color: #fff;
+}
+.error-text {
+    color: #fca5a5;
+    margin-top: 0.2rem;
+}
+.error-text b { color: #fecaca; }
+
 /* Collapsible Dead Links */
 .collapsible-toggle {
     background: none;

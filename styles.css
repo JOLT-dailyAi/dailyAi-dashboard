@@ -193,6 +193,18 @@ body {
 }
 
 @media (max-width: 600px) {
+    .dashboard-container {
+        padding: 1rem 0.5rem;
+    }
+    .glass-card {
+        padding: 1.2rem 0.8rem;
+    }
+    .run-block {
+        padding: 0.8rem 0.5rem;
+    }
+    .run-step {
+        padding: 0.4rem 0.3rem;
+    }
     .header-right .btn-text {
         display: none;
     }

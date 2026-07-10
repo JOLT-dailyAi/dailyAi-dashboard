@@ -1,6 +1,7 @@
 const GITHUB_OWNER = 'JOLT-dailyAi';
 const GITHUB_REPO = 'dailyAi';
 const WORKFLOW_ID = 'aggregator.yml';
+const UPLOADER_WORKFLOW_ID = 'uploader.yml';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1vcm1LTJov1Chx50WXkAywgQS1HLe6gHBD0vxU6voWJM/export?format=csv&gid=342308422';
 
 const WF_LOG_FILE_MAP = {
@@ -21,6 +22,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const grid = document.getElementById('workflows-grid');
     const triggerAllBtn = document.getElementById('trigger-all-btn');
     const gridToggleBtn = document.getElementById('grid-toggle-btn');
+    
+    const uploadersGrid = document.getElementById('uploaders-grid');
+    const triggerAllUploadersBtn = document.getElementById('trigger-all-uploaders-btn');
+    const uploaderGridToggleBtn = document.getElementById('uploader-grid-toggle-btn');
     
     if (gridToggleBtn) {
         gridToggleBtn.addEventListener('click', () => {
@@ -46,7 +51,21 @@ document.addEventListener('DOMContentLoaded', () => {
     
     if (triggerAllBtn) {
         triggerAllBtn.addEventListener('click', (e) => {
-            triggerGitHubAction(e.target, 'all');
+            triggerGitHubAction(e.target, 'all', WORKFLOW_ID);
+        });
+    }
+    
+    if (uploaderGridToggleBtn) {
+        uploaderGridToggleBtn.addEventListener('click', () => {
+            const isCurrentlyOpen = uploaderGridToggleBtn.classList.contains('open');
+            uploaderGridToggleBtn.classList.toggle('open');
+            uploadersGrid.classList.toggle('collapsed');
+        });
+    }
+    
+    if (triggerAllUploadersBtn) {
+        triggerAllUploadersBtn.addEventListener('click', (e) => {
+            triggerGitHubAction(e.target, 'all', UPLOADER_WORKFLOW_ID);
         });
     }
     
@@ -102,6 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     let globalDashboardLogs = null;
+    let globalUploaderLogs = null;
 
     async function fetchGlobalLogs() {
         try {
@@ -120,9 +140,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    async function fetchUploaderLogs() {
+        try {
+            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/logs/uploader_dashboard_logs.json`, {
+                headers: {
+                    'Authorization': `Bearer ${pat}`,
+                    'Accept': 'application/vnd.github.v3.raw'
+                }
+            });
+            if (res.ok) {
+                const text = await res.text();
+                globalUploaderLogs = JSON.parse(text);
+            }
+        } catch (e) {
+            console.error("Failed to fetch uploader logs", e);
+        }
+    }
+
     async function fetchDashboardData() {
         try {
             await fetchGlobalLogs();
+            await fetchUploaderLogs();
             const res = await fetch(SHEET_CSV_URL);
             if (!res.ok) throw new Error('Failed to fetch Google Sheet CSV. Check share permissions.');
             const csvText = await res.text();
@@ -142,6 +180,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             renderCards(data);
+            renderUploaderCards();
         } catch (e) {
             showToast(e.message, 'error');
         }
@@ -187,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
             
             card.querySelector('.trigger-btn').addEventListener('click', (e) => {
-                triggerGitHubAction(e.target, wf.Workflow);
+                triggerGitHubAction(e.target, wf.Workflow, WORKFLOW_ID);
             });
             
             grid.appendChild(card);
@@ -197,16 +236,16 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    async function triggerGitHubAction(btnElement, workflowName) {
+    async function triggerGitHubAction(btnElement, workflowName, targetWorkflowId = WORKFLOW_ID) {
         const originalText = btnElement.innerText;
         btnElement.innerText = 'Triggering...';
         
         // Disable ALL action buttons to prevent parallel runs
-        const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn');
+        const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn, #trigger-all-uploaders-btn');
         allTriggers.forEach(btn => btn.disabled = true);
 
         try {
-            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${WORKFLOW_ID}/dispatches`, {
+            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/actions/workflows/${targetWorkflowId}/dispatches`, {
                 method: 'POST',
                 headers: {
                     'Authorization': `Bearer ${pat}`,
@@ -246,7 +285,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const enableAllButtons = () => {
             btnElement.innerText = originalText;
-            const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn');
+            const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn, #trigger-all-uploaders-btn');
             allTriggers.forEach(btn => btn.disabled = false);
         };
 
@@ -446,6 +485,55 @@ document.addEventListener('DOMContentLoaded', () => {
                     updateTransform();
                 }
             });
+        });
+    }
+    
+    function renderUploaderCards() {
+        if (!uploadersGrid) return;
+        uploadersGrid.innerHTML = '';
+        const defaultNiches = ['desimemes', 'animeHour', 'Cosplay', 'FpsClips'];
+        
+        defaultNiches.forEach(nicheKey => {
+            const logEntry = (globalUploaderLogs && globalUploaderLogs[nicheKey.toLowerCase()]) || {};
+            
+            const card = document.createElement('div');
+            card.className = 'glass-card';
+            
+            const status = logEntry.status || 'Pending';
+            const isSuccess = status.includes('Success');
+            const statusColor = isSuccess ? '#22c55e' : (status.includes('Failed') ? '#ef4444' : '#3b82f6');
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <h2 class="card-title">${nicheKey.toLowerCase() === 'desimemes' ? 'Memes' : nicheKey}</h2>
+                    <span class="status-badge" style="color: ${statusColor}; border: 1px solid ${statusColor}">
+                        ${status}
+                    </span>
+                </div>
+                
+                <div class="card-meta">
+                    <div class="meta-row">
+                        <span class="meta-label">IG Followers</span>
+                        <span class="meta-value">${logEntry.ig_follower_count || '0'}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Discord Members</span>
+                        <span class="meta-value">${logEntry.discord_member_count || '0'}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Videos Posted</span>
+                        <span class="meta-value">${logEntry.videos_posted || '0'}</span>
+                    </div>
+                </div>
+                
+                <button class="glow-btn trigger-btn">Trigger Uploader</button>
+            `;
+            
+            card.querySelector('.trigger-btn').addEventListener('click', (e) => {
+                triggerGitHubAction(e.target, nicheKey, UPLOADER_WORKFLOW_ID);
+            });
+            
+            uploadersGrid.appendChild(card);
         });
     }
 });

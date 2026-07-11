@@ -606,10 +606,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="meta-value">${logEntry.ig_follower_count || '0'}</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-label">Discord Members</span>
-                        <span class="meta-value">${logEntry.discord_member_count || '0'}</span>
-                    </div>
-                    <div class="meta-row">
                         <span class="meta-label">Aggregator</span>
                         <span class="meta-value">${logEntry.aggregator_count || '0'}</span>
                     </div>
@@ -619,11 +615,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="meta-row">
                         <span class="meta-label">Videos Posted to IG</span>
-                        <span class="meta-value" style="font-size: 0.8rem">
-                            ${logEntry.videos_posted_to_ig && logEntry.videos_posted_to_ig.length > 0 
-                                ? logEntry.videos_posted_to_ig.map((url, idx) => `<a href="${url}" target="_blank" style="color: #60a5fa; text-decoration: none;">[${idx + 1}]</a>`).join(' ') 
-                                : 'None'}
-                        </span>
+                        <span class="meta-value">${logEntry.posted_count || '0'}</span>
                     </div>
                     <div class="meta-row">
                         <span class="meta-label">Last Run</span>

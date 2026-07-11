@@ -424,7 +424,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
         } else {
-            html += `<div class="run-step"><div class="step-stats" style="font-size: 0.85rem;">No pipeline steps executed.</div></div>`;
+            const emptyMsg = (run.videos_appended !== undefined) ? "Uploader finished successfully. (Step-by-step funnel tracking is currently only available for Aggregators)." : "No pipeline steps executed.";
+            html += `<div class="run-step"><div class="step-stats" style="font-size: 0.85rem;">${emptyMsg}</div></div>`;
         }
 
         html += `

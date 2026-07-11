@@ -11,6 +11,36 @@ const WF_LOG_FILE_MAP = {
     'FpsClips': 'FpsClips_latest.txt'
 };
 
+
+function parseCSV(text) {
+    let result = [];
+    let row = [];
+    let inQuotes = false;
+    let val = '';
+    for (let i = 0; i < text.length; i++) {
+        let char = text[i];
+        if (char === '"' && text[i+1] === '"') {
+            val += '"'; i++;
+        } else if (char === '"') {
+            inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+            row.push(val.trim());
+            val = '';
+        } else if ((char === '\n' || char === '\r') && !inQuotes) {
+            if (char === '\r' && text[i+1] === '\n') i++;
+            row.push(val.trim());
+            result.push(row);
+            row = [];
+            val = '';
+        } else {
+            val += char;
+        }
+    }
+    row.push(val.trim());
+    if (row.length > 0 && row.some(v => v !== '')) result.push(row);
+    return result;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const loginModal = document.getElementById('login-modal');
     const mainDashboard = document.getElementById('main-dashboard');
@@ -235,17 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error('Failed to fetch Google Sheet CSV. Check share permissions.');
             const csvText = await res.text();
             
-            // Robust CSV parser
-            const rows = csvText.split('\n').map(row => {
-                // Split by comma, but ignore commas inside quotes
-                const matches = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-                return matches.map(val => val.trim().replace(/^"|"$/g, ''));
-            });
+            const rows = parseCSV(csvText);
             
             const headers = rows[0];
             const data = rows.slice(1).filter(r => r.length > 1).map(row => {
                 let obj = {};
-                row.forEach((val, i) => obj[headers[i]] = val);
+                // Only take the first 7 columns for the Aggregators to avoid duplicate header overwrites
+                row.slice(0, 7).forEach((val, i) => obj[headers[i]] = val);
                 return obj;
             });
 
@@ -389,10 +415,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function extractRunTimeForWorkflow(csvText, workflowName) {
-        const rows = csvText.split('\n').map(row => {
-            const matches = row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/);
-            return matches.map(val => val.trim().replace(/^"|"$/g, ''));
-        });
+        const rows = parseCSV(csvText);
         const headers = rows[0];
         const wfIndex = headers.indexOf('Workflow');
         const rtIndex = headers.indexOf('LastRunTime');
@@ -626,19 +649,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!uploadersGrid) return;
         uploadersGrid.innerHTML = '';
         const defaultNiches = ['desimemes', 'animeHour', 'Cosplay', 'FpsClips'];
-        let anyNicheRunInLast12h = false;
+        let anyIneligible = false;
         defaultNiches.forEach(nicheKey => {
             const baseLog = (globalUploaderLogs && globalUploaderLogs[nicheKey.toLowerCase()]) || {};
             const logEntry = baseLog.latest ? baseLog.latest : baseLog;
             const uploaderHistory = baseLog.history || (Object.keys(logEntry).length ? [logEntry] : []);
             
             const eligibility = checkUploaderEligibility(uploaderHistory);
-            
-            if (uploaderHistory.length > 0) {
-                const lastRun = parseISTDateString(uploaderHistory[0].last_run_time_ist || uploaderHistory[0].timestamp);
-                if (lastRun && ((new Date() - lastRun) / (1000 * 60 * 60) < 12)) {
-                    anyNicheRunInLast12h = true;
-                }
+            if (!eligibility.canRun) {
+                anyIneligible = true;
             }
             
             const card = document.createElement('div');

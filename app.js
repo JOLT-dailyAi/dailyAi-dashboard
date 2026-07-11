@@ -577,13 +577,69 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
     
+
+    function parseISTDateString(dateString) {
+        if (!dateString || dateString === 'Never' || dateString === 'Unknown') return null;
+        const match = dateString.match(/(\d{4}-\d{2}-\d{2}) (\d{2}):(\d{2}):(\d{2}) (AM|PM)/);
+        if (!match) return new Date(dateString);
+        const [_, datePart, h, m, s, ampm] = match;
+        let hour = parseInt(h, 10);
+        if (ampm === 'PM' && hour < 12) hour += 12;
+        if (ampm === 'AM' && hour === 12) hour = 0;
+        return new Date(`${datePart}T${hour.toString().padStart(2, '0')}:${m}:${s}+05:30`);
+    }
+
+    function checkUploaderEligibility(uploaderHistory) {
+        if (!uploaderHistory || uploaderHistory.length === 0) return { canRun: true, reason: '' };
+        
+        const now = new Date();
+        const lastRun = parseISTDateString(uploaderHistory[0].last_run_time_ist || uploaderHistory[0].timestamp);
+        
+        if (lastRun) {
+            const hoursSinceLastRun = (now - lastRun) / (1000 * 60 * 60);
+            if (hoursSinceLastRun < 12) {
+                return { canRun: false, reason: `Last run was only ${Math.round(hoursSinceLastRun * 10) / 10}h ago (Wait 12h)` };
+            }
+        }
+        
+        let postedLast24h = 0;
+        for (const run of uploaderHistory) {
+            const runDate = parseISTDateString(run.last_run_time_ist || run.timestamp);
+            if (runDate) {
+                const hoursSinceRun = (now - runDate) / (1000 * 60 * 60);
+                if (hoursSinceRun <= 24) {
+                    postedLast24h += (run.posted_count || 0);
+                } else {
+                    break;
+                }
+            }
+        }
+        
+        if (postedLast24h > 13) {
+            return { canRun: false, reason: `Posted ${postedLast24h} videos in last 24h (Limit is 13 to avoid hitting IG 25 cap)` };
+        }
+        
+        return { canRun: true, reason: '' };
+    }
+
     function renderUploaderCards() {
         if (!uploadersGrid) return;
         uploadersGrid.innerHTML = '';
         const defaultNiches = ['desimemes', 'animeHour', 'Cosplay', 'FpsClips'];
+        let anyNicheRunInLast12h = false;
         defaultNiches.forEach(nicheKey => {
             const baseLog = (globalUploaderLogs && globalUploaderLogs[nicheKey.toLowerCase()]) || {};
             const logEntry = baseLog.latest ? baseLog.latest : baseLog;
+            const uploaderHistory = baseLog.history || (Object.keys(logEntry).length ? [logEntry] : []);
+            
+            const eligibility = checkUploaderEligibility(uploaderHistory);
+            
+            if (uploaderHistory.length > 0) {
+                const lastRun = parseISTDateString(uploaderHistory[0].last_run_time_ist || uploaderHistory[0].timestamp);
+                if (lastRun && ((new Date() - lastRun) / (1000 * 60 * 60) < 12)) {
+                    anyNicheRunInLast12h = true;
+                }
+            }
             
             const card = document.createElement('div');
             card.className = 'glass-card';
@@ -623,7 +679,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 
-                <button class="glow-btn trigger-btn">Trigger Uploader</button>
+                <button class="glow-btn trigger-btn" ${eligibility.canRun ? '' : `disabled="true" style="opacity: 0.5; cursor: not-allowed" title="${eligibility.reason}"`}>${eligibility.canRun ? 'Trigger Uploader' : 'Cooldown Active'}</button>
             `;
             
             card.querySelector('.trigger-btn').addEventListener('click', (e) => {
@@ -633,8 +689,7 @@ document.addEventListener('DOMContentLoaded', () => {
             uploadersGrid.appendChild(card);
             
             // Render historical logs for Uploader
-            const uploaderHistory = baseLog.history || [logEntry]; // Fallback to a 1-item array if no history exists yet
-            if (uploaderHistory.length > 0 && Object.keys(uploaderHistory[0]).length > 0) {
+                        if (uploaderHistory.length > 0 && Object.keys(uploaderHistory[0]).length > 0) {
                 // Map the Uploader log format to what generateRunHtml expects
                 const mappedRuns = uploaderHistory.map(run => ({
                     status: run.status || 'Pending',

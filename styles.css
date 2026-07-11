@@ -729,3 +729,10 @@ body {
     text-transform: capitalize;
     letter-spacing: 0.5px;
 }
+
+@media (max-width: 1024px) {
+    .stat-label { display: none; }
+    .stat-item { padding: 8px 12px; font-size: 1rem; gap: 8px; flex: 1 1 120px; }
+    .stat-pfp { width: 32px; height: 32px; }
+    .stats-bar { padding: 12px 15px; gap: 10px; }
+}

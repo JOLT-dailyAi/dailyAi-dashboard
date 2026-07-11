@@ -475,8 +475,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${navHtml}
                     
                     <div class="run-summary">
-                        <div class="run-stat summary-stat">Images: <span>${run.images_appended}</span></div>
-                        <div class="run-stat summary-stat">Videos: <span>${run.videos_appended}</span></div>
+                        <div class="run-stat summary-stat">Aggregator: <span>${run.aggregator_count ?? run.images_appended ?? 0}</span></div>
+                        <div class="run-stat summary-stat">Posted: <span>${run.posted_count ?? run.videos_appended ?? 0}</span></div>
                     </div>
                     
                     <div class="run-steps">
@@ -495,7 +495,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 `;
             });
         } else {
-            const emptyMsg = (run.videos_appended !== undefined) ? "Uploader finished successfully. (Step-by-step funnel tracking is currently only available for Aggregators)." : "No pipeline steps executed.";
+            const emptyMsg = (run.videos_appended !== undefined || run.posted_count !== undefined) ? "Uploader finished successfully. (Step-by-step funnel tracking is currently only available for Aggregators)." : "No pipeline steps executed.";
             html += `<div class="run-step"><div class="step-stats" style="font-size: 0.85rem;">${emptyMsg}</div></div>`;
         }
 
@@ -610,8 +610,12 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="meta-value">${logEntry.discord_member_count || '0'}</span>
                     </div>
                     <div class="meta-row">
-                        <span class="meta-label">Videos Posted</span>
-                        <span class="meta-value">${logEntry.videos_posted || '0'}</span>
+                        <span class="meta-label">Aggregator</span>
+                        <span class="meta-value">${logEntry.aggregator_count || '0'}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Posted</span>
+                        <span class="meta-value">${logEntry.posted_count || '0'}</span>
                     </div>
                 </div>
                 
@@ -631,8 +635,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const mappedRuns = uploaderHistory.map(run => ({
                     status: run.status || 'Pending',
                     timestamp: run.last_run_time_ist || run.timestamp || 'Unknown',
-                    images_appended: 0,
-                    videos_appended: run.videos_posted || 0,
+                    aggregator_count: run.aggregator_count || 0,
+                    posted_count: run.posted_count || 0,
                     funnel: run.funnel || []
                 }));
                 renderCarouselLogs('uploader_' + nicheKey, card, mappedRuns);

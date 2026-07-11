@@ -164,7 +164,7 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const niches = [
             { id: 'desimemes', label: 'Memes', assetPath: 'Memes', pfpName: 'desimemes.jpg' },
-            { id: 'animeHour', label: 'AnimeHour', assetPath: 'animeHour', pfpName: 'animehour.png' },
+            { id: 'animeHour', label: 'AnimeHour', assetPath: 'animeHour', pfpName: 'animehour.gif' },
             { id: 'Cosplay', label: 'Cosplay', assetPath: 'cosplay', pfpName: 'cosplay.png' },
             { id: 'FpsClips', label: 'FpsClips', assetPath: 'fpsClips', pfpName: 'fpsclips.png' }
         ];

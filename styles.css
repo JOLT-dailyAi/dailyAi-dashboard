@@ -694,11 +694,13 @@ body {
 .stat-item {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex: 1 1 200px;
     gap: 12px;
-    font-size: 1rem;
+    font-size: 1.1rem;
     color: #e2e8f0;
     background: rgba(0, 0, 0, 0.25);
-    padding: 8px 16px;
+    padding: 12px 20px;
     border-radius: 24px;
     transition: transform 0.2s, background 0.2s;
 }
@@ -707,15 +709,15 @@ body {
     background: rgba(0, 0, 0, 0.4);
 }
 .stat-pfp {
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid rgba(255, 255, 255, 0.1);
 }
 .stat-icon {
-    width: 20px;
-    height: 20px;
+    width: 22px;
+    height: 22px;
     object-fit: contain;
     flex-shrink: 0;
 }
@@ -723,6 +725,7 @@ body {
     font-weight: 700;
     color: #fff;
     margin-right: 6px;
+    font-size: 1.15rem;
     text-transform: capitalize;
     letter-spacing: 0.5px;
 }

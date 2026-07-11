@@ -617,6 +617,18 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="meta-label">Posted</span>
                         <span class="meta-value">${logEntry.posted_count || '0'}</span>
                     </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Videos Posted to IG</span>
+                        <span class="meta-value" style="font-size: 0.8rem">
+                            ${logEntry.videos_posted_to_ig && logEntry.videos_posted_to_ig.length > 0 
+                                ? logEntry.videos_posted_to_ig.map((url, idx) => `<a href="${url}" target="_blank" style="color: #60a5fa; text-decoration: none;">[${idx + 1}]</a>`).join(' ') 
+                                : 'None'}
+                        </span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Last Run</span>
+                        <span class="meta-value" style="font-size: 0.85rem">${logEntry.last_run_time_ist || 'Never'}</span>
+                    </div>
                 </div>
                 
                 <button class="glow-btn trigger-btn">Trigger Uploader</button>

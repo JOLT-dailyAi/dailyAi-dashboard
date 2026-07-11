@@ -163,10 +163,10 @@ document.addEventListener('DOMContentLoaded', () => {
         statsBar.innerHTML = '';
         
         const niches = [
-            { id: 'desimemes', label: 'Memes', assetPath: 'Memes' },
-            { id: 'animeHour', label: 'AnimeHour', assetPath: 'animeHour' },
-            { id: 'Cosplay', label: 'Cosplay', assetPath: 'cosplay' },
-            { id: 'FpsClips', label: 'FpsClips', assetPath: 'fpsClips' }
+            { id: 'desimemes', label: 'Memes', assetPath: 'Memes', pfpName: 'desimemes.jpg' },
+            { id: 'animeHour', label: 'AnimeHour', assetPath: 'animeHour', pfpName: 'animehour.png' },
+            { id: 'Cosplay', label: 'Cosplay', assetPath: 'cosplay', pfpName: 'cosplay.png' },
+            { id: 'FpsClips', label: 'FpsClips', assetPath: 'fpsClips', pfpName: 'fpsclips.png' }
         ];
         
         // Inline SVGs for crisp rendering without extra API calls
@@ -175,6 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         for (const niche of niches) {
             try {
+                // Fetch stats json
                 const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/assets/${niche.assetPath}/Followers_Count/followersCount.json`, {
                     headers: {
                         'Authorization': `Bearer ${pat}`,
@@ -186,7 +187,28 @@ document.addEventListener('DOMContentLoaded', () => {
                     const text = await res.text();
                     const data = JSON.parse(text);
                     
-                    let html = `<div class="stat-item"><span class="stat-label">${niche.label}:</span>`;
+                    let pfpSrc = '';
+                    try {
+                        // Fetch the raw PFP image blob
+                        const pfpRes = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/assets/pfps/${niche.pfpName}`, {
+                            headers: {
+                                'Authorization': `Bearer ${pat}`,
+                                'Accept': 'application/vnd.github.v3.raw'
+                            }
+                        });
+                        if (pfpRes.ok) {
+                            const blob = await pfpRes.blob();
+                            pfpSrc = URL.createObjectURL(blob);
+                        }
+                    } catch(e) {
+                        console.warn(`Failed to fetch PFP for ${niche.label}`, e);
+                    }
+                    
+                    let html = `<div class="stat-item">`;
+                    if (pfpSrc) {
+                        html += `<img src="${pfpSrc}" class="stat-pfp" alt="${niche.label} PFP">`;
+                    }
+                    html += `<span class="stat-label">${niche.label}:</span>`;
                     
                     if (data.followers_count) {
                         html += `${igSvg} ${data.followers_count}`;

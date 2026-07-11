@@ -621,7 +621,13 @@ document.addEventListener('DOMContentLoaded', () => {
         if (lastRun) {
             const hoursSinceLastRun = (now - lastRun) / (1000 * 60 * 60);
             if (hoursSinceLastRun < 12) {
-                return { canRun: false, reason: `Last run was only ${Math.round(hoursSinceLastRun * 10) / 10}h ago (Wait 12h)` };
+                const nextRunDate = new Date(lastRun.getTime() + 12 * 60 * 60 * 1000);
+                const nextRunStr = nextRunDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+                return { 
+                    canRun: false, 
+                    reason: `Last run was only ${Math.round(hoursSinceLastRun * 10) / 10}h ago (Wait 12h)`,
+                    nextRunLabel: `Next: ${nextRunStr}`
+                };
             }
         }
         
@@ -639,10 +645,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         
         if (postedLast24h > 13) {
-            return { canRun: false, reason: `Posted ${postedLast24h} videos in last 24h (Limit is 13 to avoid hitting IG 25 cap)` };
+            return { 
+                canRun: false, 
+                reason: `Posted ${postedLast24h} videos in last 24h (Limit is 13 to avoid hitting IG 25 cap)`,
+                nextRunLabel: "IG Limit Reached"
+            };
         }
         
-        return { canRun: true, reason: '' };
+        return { canRun: true, reason: '', nextRunLabel: '' };
     }
 
     function renderUploaderCards() {
@@ -698,11 +708,25 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 </div>
                 
-                <button class="glow-btn trigger-btn" ${eligibility.canRun ? '' : `disabled="true" style="opacity: 0.5; cursor: not-allowed" title="${eligibility.reason}"`}>${eligibility.canRun ? 'Trigger Uploader' : 'Cooldown Active'}</button>
+                <button class="glow-btn trigger-btn ${eligibility.canRun ? '' : 'cooldown-btn'}" 
+                    ${eligibility.canRun ? '' : `title="${eligibility.reason}"`}
+                    data-cooldown="Cooldown Active"
+                    data-nextrun="${eligibility.nextRunLabel}">
+                    ${eligibility.canRun ? 'Trigger Uploader' : eligibility.nextRunLabel}
+                </button>
             `;
             
             card.querySelector('.trigger-btn').addEventListener('click', (e) => {
-                triggerGitHubAction(e.target, nicheKey, UPLOADER_WORKFLOW_ID);
+                const btn = e.target;
+                if (btn.classList.contains('cooldown-btn')) {
+                    if (btn.innerText === btn.getAttribute('data-cooldown')) {
+                        btn.innerText = btn.getAttribute('data-nextrun');
+                    } else {
+                        btn.innerText = btn.getAttribute('data-cooldown');
+                    }
+                    return;
+                }
+                triggerGitHubAction(btn, nicheKey, UPLOADER_WORKFLOW_ID);
             });
             
             uploadersGrid.appendChild(card);

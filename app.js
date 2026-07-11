@@ -420,6 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <b>${step.function_name}</b>: ${step.input} in → ${step.passed} pass, <span class="${step.failed > 0 ? 'error-text' : ''}">${step.failed} fail</span>
                         </div>
                         ${step.failed_urls && step.failed_urls.length > 0 ? generateDroppedUrlsHtml("Failed URLs", step.failed_urls) : ''}
+                        ${step.details_list && step.details_list.length > 0 ? generateDetailsHtml(step.details_label || "Details", step.details_list) : ''}
                     </div>
                 `;
             });
@@ -454,6 +455,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 ${urls.map(link => {
                     const cleanLink = link.replace(/^\[.*?\]\s*/, '');
                     return `<div class="dead-link-item"><a href="${cleanLink}" target="_blank">${link}</a></div>`;
+                }).join('')}
+            </div>
+        `;
+    }
+    
+    function generateDetailsHtml(label, items) {
+        return `
+            <button class="collapsible-toggle" onclick="this.classList.toggle('open'); this.nextElementSibling.classList.toggle('open')">
+                ${label} (${items.length}) <span class="chevron">▶</span>
+            </button>
+            <div class="dead-links-list">
+                ${items.map(item => {
+                    // Simple text div instead of anchor tag
+                    return `<div class="dead-link-item" style="white-space: pre-wrap; font-size: 0.8rem; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05);">${item}</div>`;
                 }).join('')}
             </div>
         `;

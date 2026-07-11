@@ -744,5 +744,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 renderCarouselLogs('uploader_' + nicheKey, card, mappedRuns);
             }
         });
+
+        const btnAllUploaders = document.getElementById('trigger-all-uploaders-btn');
+        if (btnAllUploaders) {
+            if (anyIneligible) {
+                btnAllUploaders.disabled = true;
+                btnAllUploaders.style.opacity = '0.5';
+                btnAllUploaders.style.cursor = 'not-allowed';
+                btnAllUploaders.title = 'One or more niches are currently on cooldown or have reached API limits.';
+            } else {
+                btnAllUploaders.disabled = false;
+                btnAllUploaders.style.opacity = '1';
+                btnAllUploaders.style.cursor = 'pointer';
+                btnAllUploaders.title = '';
+            }
+        }
     }
 });

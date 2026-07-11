@@ -347,11 +347,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- Log Parsing and Rendering (JSON Carousel) ---
     
-    function renderCarouselLogs(workflowName, cardElement) {
-        if (!globalDashboardLogs || !globalDashboardLogs[workflowName]) return;
+    function renderCarouselLogs(workflowName, cardElement, providedRuns = null) {
+        let runs = providedRuns;
+        if (!runs) {
+            if (!globalDashboardLogs || !globalDashboardLogs[workflowName]) return;
+            runs = globalDashboardLogs[workflowName];
+        }
         
-        const runs = globalDashboardLogs[workflowName];
-        if (runs.length === 0) return;
+        if (!runs || runs.length === 0) return;
 
         let html = `
             <div class="log-panel">
@@ -492,9 +495,9 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!uploadersGrid) return;
         uploadersGrid.innerHTML = '';
         const defaultNiches = ['desimemes', 'animeHour', 'Cosplay', 'FpsClips'];
-        
         defaultNiches.forEach(nicheKey => {
-            const logEntry = (globalUploaderLogs && globalUploaderLogs[nicheKey.toLowerCase()]) || {};
+            const baseLog = (globalUploaderLogs && globalUploaderLogs[nicheKey.toLowerCase()]) || {};
+            const logEntry = baseLog.latest ? baseLog.latest : baseLog;
             
             const card = document.createElement('div');
             card.className = 'glass-card';
@@ -534,6 +537,20 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             uploadersGrid.appendChild(card);
+            
+            // Render historical logs for Uploader
+            const uploaderHistory = baseLog.history || [logEntry]; // Fallback to a 1-item array if no history exists yet
+            if (uploaderHistory.length > 0 && Object.keys(uploaderHistory[0]).length > 0) {
+                // Map the Uploader log format to what generateRunHtml expects
+                const mappedRuns = uploaderHistory.map(run => ({
+                    status: run.status || 'Pending',
+                    timestamp: run.last_run_time_ist || run.timestamp || 'Unknown',
+                    images_appended: 0,
+                    videos_appended: run.videos_posted || 0,
+                    funnel: run.funnel || []
+                }));
+                renderCarouselLogs('uploader_' + nicheKey, card, mappedRuns);
+            }
         });
     }
 });

@@ -2,6 +2,7 @@ const GITHUB_OWNER = 'JOLT-dailyAi';
 const GITHUB_REPO = 'dailyAi';
 const WORKFLOW_ID = 'aggregator.yml';
 const UPLOADER_WORKFLOW_ID = 'uploader.yml';
+const IMAGE_UPLOADER_WORKFLOW_ID = 'image_uploader.yml';
 const SHEET_CSV_URL = 'https://docs.google.com/spreadsheets/d/1vcm1LTJov1Chx50WXkAywgQS1HLe6gHBD0vxU6voWJM/export?format=csv&gid=342308422';
 
 const WF_LOG_FILE_MAP = {
@@ -57,6 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const triggerAllUploadersBtn = document.getElementById('trigger-all-uploaders-btn');
     const uploaderGridToggleBtn = document.getElementById('uploader-grid-toggle-btn');
     
+    const imageUploadersGrid = document.getElementById('image-uploaders-grid');
+    const triggerAllImageUploadersBtn = document.getElementById('trigger-all-image-uploaders-btn');
+    const imageUploaderGridToggleBtn = document.getElementById('image-uploader-grid-toggle-btn');
+    
     if (gridToggleBtn) {
         gridToggleBtn.addEventListener('click', () => {
             const isCurrentlyOpen = gridToggleBtn.classList.contains('open');
@@ -96,6 +101,20 @@ document.addEventListener('DOMContentLoaded', () => {
     if (triggerAllUploadersBtn) {
         triggerAllUploadersBtn.addEventListener('click', (e) => {
             triggerGitHubAction(e.target, 'all', UPLOADER_WORKFLOW_ID);
+        });
+    }
+    
+    if (imageUploaderGridToggleBtn) {
+        imageUploaderGridToggleBtn.addEventListener('click', () => {
+            const isCurrentlyOpen = imageUploaderGridToggleBtn.classList.contains('open');
+            imageUploaderGridToggleBtn.classList.toggle('open');
+            imageUploadersGrid.classList.toggle('collapsed');
+        });
+    }
+    
+    if (triggerAllImageUploadersBtn) {
+        triggerAllImageUploadersBtn.addEventListener('click', (e) => {
+            triggerGitHubAction(e.target, 'all', IMAGE_UPLOADER_WORKFLOW_ID);
         });
     }
     
@@ -152,6 +171,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let globalDashboardLogs = null;
     let globalUploaderLogs = null;
+    let globalImageUploaderLogs = null;
 
     async function fetchGlobalLogs() {
         try {
@@ -184,6 +204,23 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         } catch (e) {
             console.error("Failed to fetch uploader logs", e);
+        }
+    }
+
+    async function fetchImageUploaderLogs() {
+        try {
+            const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/data/logs/image_uploader_dashboard_logs.json`, {
+                headers: {
+                    'Authorization': `Bearer ${pat}`,
+                    'Accept': 'application/vnd.github.v3.raw'
+                }
+            });
+            if (res.ok) {
+                const text = await res.text();
+                globalImageUploaderLogs = JSON.parse(text);
+            }
+        } catch (e) {
+            console.error("Failed to fetch image uploader logs", e);
         }
     }
 
@@ -260,6 +297,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             await fetchGlobalLogs();
             await fetchUploaderLogs();
+            await fetchImageUploaderLogs();
             await fetchFollowerStats();
             const res = await fetch(SHEET_CSV_URL);
             if (!res.ok) throw new Error('Failed to fetch Google Sheet CSV. Check share permissions.');
@@ -277,6 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             renderCards(data);
             renderUploaderCards();
+            renderImageUploaderCards();
         } catch (e) {
             showToast(e.message, 'error');
         }
@@ -337,7 +376,7 @@ document.addEventListener('DOMContentLoaded', () => {
         btnElement.innerText = 'Triggering...';
         
         // Disable ALL action buttons to prevent parallel runs
-        const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn, #trigger-all-uploaders-btn');
+        const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn, #trigger-all-uploaders-btn, #trigger-all-image-uploaders-btn');
         allTriggers.forEach(btn => btn.disabled = true);
 
         try {
@@ -381,7 +420,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const enableAllButtons = () => {
             btnElement.innerText = originalText;
-            const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn, #trigger-all-uploaders-btn');
+            const allTriggers = document.querySelectorAll('.trigger-btn, #trigger-all-btn, #trigger-all-uploaders-btn, #trigger-all-image-uploaders-btn');
             allTriggers.forEach(btn => btn.disabled = false);
         };
 
@@ -757,6 +796,104 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnAllUploaders.style.opacity = '1';
                 btnAllUploaders.style.cursor = 'pointer';
                 btnAllUploaders.title = '';
+            }
+        }
+    }
+
+    function renderImageUploaderCards() {
+        if (!imageUploadersGrid) return;
+        imageUploadersGrid.innerHTML = '';
+        const defaultNiches = ['desimemes', 'animeHour', 'Cosplay', 'FpsClips'];
+        let anyIneligible = false;
+        
+        defaultNiches.forEach(nicheKey => {
+            const baseLog = (globalImageUploaderLogs && globalImageUploaderLogs[nicheKey.toLowerCase()]) || {};
+            const logEntry = baseLog.latest ? baseLog.latest : baseLog;
+            const uploaderHistory = baseLog.history || (Object.keys(logEntry).length ? [logEntry] : []);
+            
+            // Re-use eligibility check (image_uploader uploads 1 reel per run, limits rarely hit, but keeps it safe)
+            const eligibility = checkUploaderEligibility(uploaderHistory);
+            if (!eligibility.canRun) {
+                anyIneligible = true;
+            }
+            
+            const card = document.createElement('div');
+            card.className = 'glass-card';
+            
+            const status = logEntry.status || 'Pending';
+            const isSuccess = status.includes('Success');
+            const statusColor = isSuccess ? '#22c55e' : (status.includes('Failed') ? '#ef4444' : '#3b82f6');
+            
+            card.innerHTML = `
+                <div class="card-header">
+                    <h2 class="card-title">${nicheKey.toLowerCase() === 'desimemes' ? 'Memes' : nicheKey}</h2>
+                    <span class="status-badge" style="color: ${statusColor}; border: 1px solid ${statusColor}">
+                        ${status}
+                    </span>
+                </div>
+                
+                <div class="card-meta">
+                    <div class="meta-row">
+                        <span class="meta-label">Buffer Filtered</span>
+                        <span class="meta-value">${logEntry.aggregator_count || '0'}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Compilation Reels</span>
+                        <span class="meta-value">${logEntry.posted_count || '0'}</span>
+                    </div>
+                    <div class="meta-row">
+                        <span class="meta-label">Last Run</span>
+                        <span class="meta-value" style="font-size: 0.85rem">${logEntry.last_run_time_ist || 'Never'}</span>
+                    </div>
+                </div>
+                
+                <button class="glow-btn trigger-btn ${eligibility.canRun ? '' : 'cooldown-btn'}" 
+                    ${eligibility.canRun ? '' : `title="${eligibility.reason}"`}
+                    data-cooldown="Cooldown Active"
+                    data-nextrun="${eligibility.nextRunLabel}">
+                    ${eligibility.canRun ? 'Trigger Image Uploader' : eligibility.nextRunLabel}
+                </button>
+            `;
+            
+            card.querySelector('.trigger-btn').addEventListener('click', (e) => {
+                const btn = e.target;
+                if (btn.classList.contains('cooldown-btn')) {
+                    if (btn.innerText === btn.getAttribute('data-cooldown')) {
+                        btn.innerText = btn.getAttribute('data-nextrun');
+                    } else {
+                        btn.innerText = btn.getAttribute('data-cooldown');
+                    }
+                    return;
+                }
+                triggerGitHubAction(btn, nicheKey, IMAGE_UPLOADER_WORKFLOW_ID);
+            });
+            
+            imageUploadersGrid.appendChild(card);
+            
+            if (uploaderHistory.length > 0 && Object.keys(uploaderHistory[0]).length > 0) {
+                const mappedRuns = uploaderHistory.map(run => ({
+                    status: run.status || 'Pending',
+                    timestamp: run.last_run_time_ist || run.timestamp || 'Unknown',
+                    aggregator_count: run.aggregator_count || 0,
+                    posted_count: run.posted_count || 0,
+                    funnel: run.funnel || []
+                }));
+                renderCarouselLogs('image_uploader_' + nicheKey, card, mappedRuns);
+            }
+        });
+
+        const btnAllImageUploaders = document.getElementById('trigger-all-image-uploaders-btn');
+        if (btnAllImageUploaders) {
+            if (anyIneligible) {
+                btnAllImageUploaders.disabled = true;
+                btnAllImageUploaders.style.opacity = '0.5';
+                btnAllImageUploaders.style.cursor = 'not-allowed';
+                btnAllImageUploaders.title = 'One or more niches are currently on cooldown or have reached API limits.';
+            } else {
+                btnAllImageUploaders.disabled = false;
+                btnAllImageUploaders.style.opacity = '1';
+                btnAllImageUploaders.style.cursor = 'pointer';
+                btnAllImageUploaders.title = '';
             }
         }
     }

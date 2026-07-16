@@ -656,10 +656,15 @@ document.addEventListener('DOMContentLoaded', () => {
         
         const now = new Date();
         const lastRun = parseISTDateString(uploaderHistory[0].last_run_time_ist || uploaderHistory[0].timestamp);
+        const lastStatus = uploaderHistory[0].status || '';
+        const postedCount = uploaderHistory[0].posted_count || 0;
+        const isFailed = lastStatus.toLowerCase().includes('failed') || lastStatus.toLowerCase().includes('partial success');
         
         if (lastRun) {
             const hoursSinceLastRun = (now - lastRun) / (1000 * 60 * 60);
-            if (hoursSinceLastRun < 12) {
+            
+            // Apply the 12-hour cooldown unless it failed AND posted 0 videos.
+            if (hoursSinceLastRun < 12 && (!isFailed || postedCount > 0)) {
                 const nextRunDate = new Date(lastRun.getTime() + 12 * 60 * 60 * 1000);
                 const nextRunStr = nextRunDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
                 return { 

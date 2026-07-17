@@ -899,6 +899,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 btnAllImageUploaders.style.opacity = '1';
                 btnAllImageUploaders.style.cursor = 'pointer';
                 btnAllImageUploaders.title = '';
+            }
+        }
+    }
+
     // MASTER SCHEDULER LOGIC
     const schedulerToggleBtn = document.getElementById('scheduler-toggle-btn');
     const masterSchedulerContainer = document.getElementById('master-scheduler-container');

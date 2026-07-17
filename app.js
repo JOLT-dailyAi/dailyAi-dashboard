@@ -844,7 +844,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                     <div class="meta-row">
                         <span class="meta-label">Compilation Reels</span>
-                        <span class="meta-value">${logEntry.posted_count || '0'}</span>
+                        <span class="meta-value">${Array.isArray(logEntry.videos_posted_to_ig) ? logEntry.videos_posted_to_ig.length : (typeof logEntry.posted_count === 'number' ? logEntry.posted_count : '0')}</span>
                     </div>
                     <div class="meta-row">
                         <span class="meta-label">Last Run</span>

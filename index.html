@@ -60,6 +60,33 @@
 
         <main>
             <div id="workflows-container">
+                <!-- Master Scheduler -->
+                <div id="master-scheduler-container" style="margin-bottom: 40px; display: none;">
+                    <div class="workflows-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h2 style="color: white; margin: 0; font-size: 1.5rem; font-weight: 600;">Master Scheduler</h2>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <button id="scheduler-toggle-btn" class="glass-btn-small open">
+                                <span class="chevron" style="display: inline-block; transition: transform 0.25s;">▼</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="scheduler-content" class="glass-card" style="padding: 20px;">
+                        <div class="scheduler-header" style="display: grid; grid-template-columns: 2fr 3fr 3fr 1fr; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 10px; margin-bottom: 15px; font-weight: 600; color: rgba(255,255,255,0.7);">
+                            <div>Niche</div>
+                            <div>Reels Uploader</div>
+                            <div>Image Compilation Uploader</div>
+                            <div style="text-align: right;">Status</div>
+                        </div>
+                        <div id="scheduler-list">
+                            <!-- Injected by JS -->
+                        </div>
+                        <div style="margin-top: 20px; text-align: right;">
+                            <button id="save-schedule-btn" class="glow-btn" style="width: auto; padding: 0.5rem 1.5rem;">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Followers Stats Bar -->
                 <div id="stats-bar" class="stats-bar"></div>
                 

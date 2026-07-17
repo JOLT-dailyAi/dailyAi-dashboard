@@ -6,6 +6,7 @@
     <title>dailyAi - Command Center</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
+    <link rel="icon" type="image/png" href="assets/logo.png">
 </head>
 <body>
     
@@ -36,9 +37,12 @@
     <!-- Main Dashboard -->
     <div class="dashboard-container" id="main-dashboard" style="display: none;">
         <header class="glass-header">
-            <div class="header-left">
-                <h1><span class="gradient-text">dailyAi</span> Command Center</h1>
-                <p class="subtitle">Serverless Automation Engine</p>
+            <div class="header-left" style="display: flex; align-items: center; gap: 15px;">
+                <img src="assets/logo.png" alt="dailyAi Logo" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.2); box-shadow: 0 0 10px rgba(0, 255, 255, 0.3);">
+                <div>
+                    <h1><span class="gradient-text">dailyAi</span> Command Center</h1>
+                    <p class="subtitle">Serverless Automation Engine</p>
+                </div>
             </div>
             <div class="header-right">
                 <button id="logout-btn" class="glass-btn-small">
